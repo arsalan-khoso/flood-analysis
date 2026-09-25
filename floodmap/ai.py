@@ -1,9 +1,12 @@
 """AI flood analyst, grounded on the database.
 
 Provider is picked from environment variables, in order:
-  1. GROQ_API_KEY       -> Groq free tier (Llama 3.3 70B), $0 for testing
+  1. GROQ_API_KEY       -> Groq free tier, $0 for testing
   2. ANTHROPIC_API_KEY  -> Claude (paid)
   3. neither            -> offline analyst that answers from the database
+
+Groq retires model names periodically, so GROQ_MODELS is tried in order and a
+"model_not_found" response falls through to the next one.
 """
 import json
 import logging
@@ -60,17 +63,28 @@ def ask(question, history=None, focus=""):
     return answer, provider
 
 
+#: Tried in order; run `python manage.py groq_models` to see what the account offers.
+GROQ_MODELS = [m for m in (os.environ.get("GROQ_MODEL"), "openai/gpt-oss-120b",
+                           "openai/gpt-oss-20b", "qwen/qwen3.8-27b") if m]
+
+
 def _groq(system, history, prompt):
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
-        json={"model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-              "messages": [{"role": "system", "content": system}, *history, {"role": "user", "content": prompt}],
-              "temperature": 0.3, "max_tokens": 700},
-        timeout=40,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": prompt}]
+    last = None
+    for model in GROQ_MODELS:
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
+            json={"model": model, "messages": messages, "temperature": 0.3, "max_tokens": 900},
+            timeout=40,
+        )
+        if resp.status_code == 404:  # model retired or not enabled on this account
+            log.warning("Groq model %s unavailable, trying the next one", model)
+            last = resp
+            continue
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()
+    last.raise_for_status()
 
 
 def _claude(system, history, prompt):

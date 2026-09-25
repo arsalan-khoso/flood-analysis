@@ -17,7 +17,7 @@ A story map of the 2022 Pakistan monsoon floods. It covers the hazard (the rain)
 
 | Env var | Provider | Cost |
 |---|---|---|
-| `GROQ_API_KEY` | Groq · Llama 3.3 70B | **Free tier**: https://console.groq.com/keys |
+| `GROQ_API_KEY` | Groq (`openai/gpt-oss-120b` by default) | **Free tier**: https://console.groq.com/keys |
 | `ANTHROPIC_API_KEY` (used only if there is no Groq key) | Claude Opus 5 | Paid |
 | none | Offline analyst: templated answers from the database | Free |
 
@@ -68,6 +68,10 @@ python manage.py runserver
 - Tests: `python manage.py test floodmap`
 
 To rebuild the seed data from the original sources: `pip install -r requirements-dev.txt` then `python manage.py build_datasets`.
+
+Groq retires model names from time to time. If the analyst silently falls back to offline mode, run
+`python manage.py groq_models` to list what your key can use, then set `GROQ_MODEL` in `.env`. The
+free tier is rate limited, and the app falls back to the offline analyst when it is exhausted.
 
 ## Deploy for free (Render)
 
