@@ -17,6 +17,7 @@
   // Layers that cost real bandwidth/GPU when visible - toggled with visibility, not just opacity.
   const HEAVY = ['satellite', 'gibs-2021', 'gibs-2022', 'flood-extent'];
   const TERRAIN_MIN_PITCH = 55;   // below this the story reads fine flat, and flat is much cheaper
+  let terrainExaggeration = 1.15; // dropped by lowerTerrain() on slow hardware
 
   const EXPOSURE_STOPS = [0, 'rgba(120,140,170,0.08)', 0.02, '#4b3f72', 0.1, '#8f3f8f', 0.25, '#d9486f', 0.5, '#ff7a45', 0.8, '#ffd166'];
   const exposureColor = (week) => ['interpolate', ['linear'], ['get', `s${week}`], ...EXPOSURE_STOPS];
@@ -110,6 +111,7 @@
       $('#swipe-range').addEventListener('input', applySwipe);
 
       loadDistricts();   // background, does not block the story starting
+      if (!window.Quality.lowered) watchFrameRate();
     },
 
     beforeChapter(chapter, index) {
@@ -132,6 +134,12 @@
     },
 
     renderLegend,
+
+    /** Called by Quality.lower() when the frame rate stays poor. */
+    lowerTerrain() {
+      terrainExaggeration = 1;
+      if (state.terrainOn) state.map.setTerrain({ source: 'mapbox-dem', exaggeration: terrainExaggeration });
+    },
 
     /** Show/hide one of the bandwidth-heavy layers outside the chapter flow (explore mode). */
     setHeavy(id, on) {
@@ -176,7 +184,28 @@
     const want = (chapter.location.pitch || 0) >= TERRAIN_MIN_PITCH && !needed.has('deaths-3d');
     if (want === state.terrainOn) return;
     state.terrainOn = want;
-    map.setTerrain(want ? { source: 'mapbox-dem', exaggeration: 1.3 } : null);
+    map.setTerrain(want ? { source: 'mapbox-dem', exaggeration: terrainExaggeration } : null);
+  }
+
+  /* Watchdog: if the frame rate stays poor for a few seconds while the tab is actually visible,
+     drop the render resolution and terrain detail once. Frozen background tabs are ignored. */
+  function watchFrameRate() {
+    let frames = 0, windowStart = performance.now(), badWindows = 0;
+    (function tick() {
+      frames++;
+      const now = performance.now();
+      if (now - windowStart >= 1000) {
+        const elapsed = (now - windowStart) / 1000;
+        if (elapsed > 2 || document.visibilityState !== 'visible') {
+          badWindows = 0;                       // tab was throttled, not slow
+        } else {
+          badWindows = frames / elapsed < 28 ? badWindows + 1 : 0;
+          if (badWindows >= 3) { window.Quality.lower(); return; }
+        }
+        frames = 0; windowStart = now;
+      }
+      requestAnimationFrame(tick);
+    })();
   }
 
   let districtsLoading = false;

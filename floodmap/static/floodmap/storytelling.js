@@ -135,6 +135,27 @@ if (!config.accessToken) {
   throw new Error('MAPBOX_TOKEN is not configured');
 }
 
+/* Render-resolution cap. Mapbox reads window.devicePixelRatio through a live getter, so capping it
+   here divides the number of pixels the GPU shades every frame (a 1.75x screen renders 2x fewer
+   pixels at 1.25). Quality.lower() drops it again to 1.0 if the frame rate stays poor. */
+window.Quality = {
+  cap: 1.25,
+  lowered: false,
+  apply: function (cap) {
+    this.cap = cap;
+    Object.defineProperty(window, 'devicePixelRatio', { get: () => cap, configurable: true });
+  },
+  lower: function () {
+    if (this.lowered) return;
+    this.lowered = true;
+    this.apply(1);
+    if (window.map) { map.resize(); }
+    if (window.FloodStory) FloodStory.lowerTerrain();
+    console.info('[flood-story] low frame rate - reduced render resolution and terrain detail');
+  },
+};
+if ((window.devicePixelRatio || 1) > Quality.cap) Quality.apply(Quality.cap);
+
 mapboxgl.accessToken = config.accessToken;
 
 var map = new mapboxgl.Map({
@@ -145,7 +166,10 @@ var map = new mapboxgl.Map({
   bearing: config.chapters[0].location.bearing,
   pitch: config.chapters[0].location.pitch,
   interactive: true,          // handlers are disabled below and re-enabled in explore mode
-  projection: config.projection
+  projection: config.projection,
+  renderWorldCopies: false,   // one copy of the world is enough for a single-country story
+  fadeDuration: 0,            // no label cross-fade work during camera flights
+  maxTileCacheSize: 40        // this story revisits few areas; a big cache just costs memory
 });
 var MAP_HANDLERS = ['scrollZoom', 'boxZoom', 'dragRotate', 'dragPan', 'keyboard', 'doubleClickZoom', 'touchZoomRotate'];
 MAP_HANDLERS.forEach(function (h) { map[h].disable(); });
@@ -173,7 +197,9 @@ map.on("load", function () {
       'type': 'raster-dem',
       'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
       'tileSize': 512,
-      'maxzoom': 14
+      // 12 instead of Mapbox's 14: the story never gets closer than ~zoom 10, and each extra
+      // DEM level quadruples the terrain mesh work for detail that is not visible here.
+      'maxzoom': 12
     });
     // Terrain itself is switched on per chapter by FloodStory.applyTerrain - enabling it for the
     // whole story keeps DEM tiles loading and re-projecting on every frame, which is the single
