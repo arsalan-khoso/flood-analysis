@@ -175,8 +175,9 @@ map.on("load", function () {
       'tileSize': 512,
       'maxzoom': 14
     });
-    // add the DEM source as a terrain layer with exaggerated height
-    map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+    // Terrain itself is switched on per chapter by FloodStory.applyTerrain - enabling it for the
+    // whole story keeps DEM tiles loading and re-projecting on every frame, which is the single
+    // biggest cost on a laptop GPU.
 
     // add a sky layer that will show when the map is highly pitched
     map.addLayer({

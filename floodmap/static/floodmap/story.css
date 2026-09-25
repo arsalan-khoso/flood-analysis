@@ -14,6 +14,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* flex/grid rules below must not override the attribute */
 body { margin: 0; padding: 0; font-family: var(--sans); background: var(--bg); color: var(--text); }
 a, a:hover, a:visited { color: var(--accent); }
 

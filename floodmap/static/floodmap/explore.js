@@ -13,8 +13,12 @@
   ];
   const STORY_ONLY = ['satellite', 'gibs-2021', 'gibs-2022', 'rain-anomaly', 'deaths-3d', 'deaths-labels', 'flood-extent'];
 
-  function enter() {
-    if (typeof map === 'undefined' || !FloodStory.state.data.districts) return;
+  async function enter() {
+    if (typeof map === 'undefined') return;
+    if (!FloodStory.state.data.districts) {
+      $('#btn-explore').textContent = 'Loading…';
+      await FloodStory.districtsReady();
+    }
     exploring = true;
     StoryEngine.setAuto(false); updateAutoButton();
     document.body.classList.add('exploring');
@@ -22,7 +26,7 @@
     $('#btn-explore').textContent = '← Back to story';
     StoryEngine.setInteractive(true);
     map.stop();
-    STORY_ONLY.forEach((l) => setLayerOpacity({ layer: l, opacity: 0, duration: 400 }));
+    STORY_ONLY.forEach((l) => { setLayerOpacity({ layer: l, opacity: 0, duration: 400 }); FloodStory.setHeavy(l, false); });
     EXPLORE_LAYERS.forEach(setLayerOpacity);
     if (!wired) wire();
     $('#week-range').value = FloodStory.state.week;
@@ -40,6 +44,7 @@
     StoryEngine.setInteractive(false);
     clearSelection();
     [...EXPLORE_LAYERS.map((l) => l.layer), 'flood-extent'].forEach((l) => setLayerOpacity({ layer: l, opacity: 0, duration: 400 }));
+    FloodStory.setHeavy('flood-extent', false);
     const ch = config.chapters[StoryEngine.current()];
     ch.onChapterEnter.forEach(setLayerOpacity);
     FloodStory.beforeChapter(ch, StoryEngine.current());
@@ -58,6 +63,7 @@
       if (selected) showDistrict(selected.pcode, false);
     });
     $('#toggle-extent').addEventListener('change', (e) => {
+      FloodStory.setHeavy('flood-extent', e.target.checked);
       setLayerOpacity({ layer: 'flood-extent', opacity: e.target.checked ? 0.6 : 0, duration: 500 });
       FloodStory.renderLegend(new Set(['exposure-fill', 'incident-dots', ...(e.target.checked ? ['flood-extent'] : [])]));
     });

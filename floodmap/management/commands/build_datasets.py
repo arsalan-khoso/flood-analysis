@@ -147,9 +147,11 @@ class Command(BaseCommand):
                                       dbf=io.BytesIO(z.read(base + ".dbf")),
                                       shx=io.BytesIO(z.read(base + ".shx")))
             geom = shape(reader.shape(0).__geo_interface__)
-        parts = [g for g in getattr(geom, "geoms", [geom]) if g.area > 2e-4]  # drop specks < ~2 km²
+        # Web payload: drop specks (< ~8 km²) and simplify hard - this is a story backdrop, not an
+        # analysis layer (the per-district numbers come from UNOSAT's own table, not from these shapes).
+        parts = [g for g in getattr(geom, "geoms", [geom]) if g.area > 8e-4]
         feats = [{"type": "Feature", "properties": {},
-                  "geometry": round_coords(mapping(g.simplify(0.004, preserve_topology=True)), 3)} for g in parts]
+                  "geometry": round_coords(mapping(g.simplify(0.012, preserve_topology=True)), 3)} for g in parts]
         write_json(STATIC / "data" / "flood_extent_aug2022.geojson", {"type": "FeatureCollection", "features": feats})
         self.stdout.write(f"Flood extent: kept {len(parts)} of {len(getattr(geom, 'geoms', [geom]))} polygons")
 
