@@ -1,0 +1,50 @@
+{
+  "event": {
+    "slug": "pakistan-floods-2022",
+    "name": "2022 Pakistan Monsoon Floods",
+    "hazard_type": "flood",
+    "start_date": "2022-06-14",
+    "end_date": "2022-10-31",
+    "summary": "Record monsoon rainfall (PMD: 190% above normal nationally for Jul–Aug; Sindh +726% and Balochistan +590% in August) caused riverine, flash and urban flooding across Pakistan. A national emergency was declared on 25 August 2022.",
+    "deaths": 1739,
+    "injured": 12867,
+    "people_affected": 33000000,
+    "people_displaced": 7900000,
+    "houses_damaged": 2288481,
+    "houses_destroyed": 897014,
+    "livestock_lost": 1164270,
+    "roads_damaged_km": 13115,
+    "bridges_damaged": 439,
+    "calamity_districts": 84,
+    "damage_usd_bn": "14.9",
+    "loss_usd_bn": "15.2",
+    "needs_usd_bn": "16.3"
+  },
+  "province_impacts": [
+    {"pcode": "PK7", "deaths": 799, "rainfall_anomaly_pct": 726, "note": "Worst hit: about 70% of total damage and losses (PDNA). Riverine and rain flooding persisted for months."},
+    {"pcode": "PK2", "deaths": 336, "rainfall_anomaly_pct": 590, "note": "Flash floods and plains flooding in Jaffarabad and Nasirabad; road links to Sindh cut."},
+    {"pcode": "PK5", "deaths": 309, "note": "Flash floods on the Swat, Kabul and Indus tributaries; Nowshera and Charsadda evacuated."},
+    {"pcode": "PK6", "deaths": 223, "note": "Koh-e-Suleman hill torrents hit Dera Ghazi Khan and Rajanpur."},
+    {"pcode": "PK1", "deaths": 48, "note": "Landslides and flash floods."},
+    {"pcode": "PK3", "deaths": 22, "note": "Glacial melt and flash floods; bridges washed away."},
+    {"pcode": "PK4", "deaths": 1, "note": "Minor impact."}
+  ],
+  "incidents": [
+    {"name": "Kalam, Swat", "date_label": "26 Aug 2022", "lng": 72.585, "lat": 35.49, "description": "The Swat River surge destroyed the multi-storey Honeymoon Hotel and dozens of riverside buildings on the floodplain."},
+    {"name": "Nowshera", "date_label": "28 Aug 2022", "lng": 71.98, "lat": 34.01, "description": "The Kabul River in high flood; authorities ordered the evacuation of large parts of the city."},
+    {"name": "Rajanpur", "date_label": "Aug 2022", "lng": 70.33, "lat": 29.10, "description": "Koh-e-Suleman hill torrents inundated villages across Rajanpur and Dera Ghazi Khan."},
+    {"name": "Dera Allah Yar, Jaffarabad", "date_label": "Aug 2022", "lng": 68.21, "lat": 28.28, "description": "The plains of eastern Balochistan were submerged and the N-65 link to Sindh was cut for weeks."},
+    {"name": "Manchar Lake", "date_label": "4 Sep 2022", "lng": 67.68, "lat": 26.42, "description": "Pakistan's largest freshwater lake overflowed. Embankment cuts were made to protect Sehwan and Bhan Saeedabad, flooding villages downstream."},
+    {"name": "Johi, Dadu", "date_label": "Sep 2022", "lng": 67.61, "lat": 26.69, "description": "The town was ringed by emergency dykes as floodwater surrounded it for weeks."},
+    {"name": "Jacobabad", "date_label": "Aug–Sep 2022", "lng": 68.44, "lat": 28.28, "description": "UNOSAT detected flood water over about 95% of the district in late August."}
+  ],
+  "sources": [
+    {"name": "NDMA Pakistan – Monsoon 2022 situation reports", "publisher": "NDMA", "url": "https://www.ndma.gov.pk/", "used_for": "Deaths, injuries, houses, livestock, roads, bridges"},
+    {"name": "Pakistan Floods 2022 Post-Disaster Needs Assessment", "publisher": "GoP, ADB, EU, UNDP, World Bank", "url": "https://www.undp.org/pakistan/publications/pakistan-floods-2022-post-disaster-needs-assessment-pdna", "used_for": "Damage, losses, reconstruction needs"},
+    {"name": "Preliminary Satellite Derived Flood Evolution Assessment (19 Oct 2022)", "publisher": "UNOSAT", "url": "https://data.humdata.org/dataset/preliminary-satellite-derived-flood-evolution-assessment-islamic-republic-of-pakistan-19-o", "used_for": "Weekly flood extent and population exposure per district (WorldPop 2020)"},
+    {"name": "Satellite detected water extents, 1–29 Aug 2022 (VIIRS)", "publisher": "UNOSAT", "url": "https://data.humdata.org/dataset/satellite-detected-water-extents-between-01-and-29-august-2022-over-pakistan", "used_for": "Flood extent polygons"},
+    {"name": "Pakistan – Subnational Administrative Boundaries (COD-AB)", "publisher": "OCHA / PCO", "url": "https://data.humdata.org/dataset/cod-ab-pak", "used_for": "Province and district boundaries"},
+    {"name": "PMD Monthly Climate Summary, August 2022", "publisher": "Pakistan Meteorological Department", "url": "https://www.pmd.gov.pk/", "used_for": "Rainfall anomalies"},
+    {"name": "NASA GIBS / Worldview – MODIS Corrected Reflectance (Bands 7-2-1)", "publisher": "NASA", "url": "https://worldview.earthdata.nasa.gov/", "used_for": "Before/after satellite imagery"}
+  ]
+}

@@ -1,0 +1,5 @@
+# Only needed to rebuild the seed datasets from HDX (manage.py build_datasets)
+-r requirements.txt
+shapely>=2.0
+pyshp>=2.3
+openpyxl>=3.1

@@ -1,29 +1,30 @@
-"""AI analyst for the flood story.
+"""AI flood analyst, grounded on the database.
 
 Provider is picked from environment variables, in order:
-  1. GROQ_API_KEY       -> Groq free tier (Llama 3.3 70B), good for testing at $0
+  1. GROQ_API_KEY       -> Groq free tier (Llama 3.3 70B), $0 for testing
   2. ANTHROPIC_API_KEY  -> Claude (paid)
-  3. neither            -> offline analyst that answers from the curated dataset
+  3. neither            -> offline analyst that answers from the database
 """
 import json
 import logging
 import os
-import re
 
 import requests
 
-from . import data
+from . import analysis
+from .models import AIQuery, District, Province
 
 log = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = (
-    "You are a disaster-risk analyst embedded in an interactive map story about "
-    "the 2022 Pakistan monsoon floods. Answer using the dataset below; when you go "
-    "beyond it, say so and keep to well-established facts. Be concise (under 180 "
-    "words), use plain language, and cite the figure's source name (NDMA, PDNA, "
-    "PMD, OCHA) when you quote a number. If the user asks about a district, cover "
-    "exposure, what happened there, and practical risk-reduction lessons.\n\n"
-    "DATASET:\n" + json.dumps(data.as_dict(), indent=1)
+INSTRUCTIONS = (
+    "You are a disaster-risk analyst embedded in an interactive story map about the 2022 Pakistan "
+    "monsoon floods. Answer using the DATA below. It comes from NDMA (casualties, damage), the PDNA "
+    "(economic cost) and UNOSAT (satellite-detected flood extent and population exposure per district, "
+    "WorldPop 2020). Name the source when you quote a number. UNOSAT exposure means people living in "
+    "flooded areas, not casualties. The figures are preliminary and not field-validated, so say so when "
+    "relevant. If the data does not cover the question, say so. Keep answers under 200 words, "
+    "in plain language. For a district, cover exposure (people and area), the trend over the weeks, "
+    "the provincial toll, and 2–3 practical risk-reduction lessons."
 )
 
 
@@ -35,40 +36,44 @@ def provider_name():
     return "offline"
 
 
-def ask(question, history=None, focus=None):
-    """Return (answer_text, provider)."""
-    history = [m for m in (history or [])[-8:]
-               if m.get("role") in ("user", "assistant") and m.get("content")]
-    prompt = question if not focus else f"[Map focus: {focus}] {question}"
+def ask(question, history=None, focus=""):
+    event = analysis.get_event()
+    history = [{"role": m["role"], "content": str(m["content"])[:4000]} for m in (history or [])[-8:]
+               if isinstance(m, dict) and m.get("role") in ("user", "assistant") and m.get("content")]
+    context = analysis.ai_context(event, f"{question} {focus}")
+    system = f"{INSTRUCTIONS}\n\nDATA:\n{json.dumps(context, default=str, separators=(',', ':'))}"
+    prompt = f"[Map focus: {focus}] {question}" if focus else question
+
     provider = provider_name()
+    answer = None
     try:
         if provider == "groq":
-            return _groq(prompt, history), provider
-        if provider == "claude":
-            return _claude(prompt, history), provider
-    except Exception:  # fall back rather than break the demo
-        log.exception("AI provider %s failed; using offline analyst", provider)
-    return _offline(question, focus), "offline"
+            answer = _groq(system, history, prompt)
+        elif provider == "claude":
+            answer = _claude(system, history, prompt)
+    except Exception:
+        log.exception("AI provider %s failed; falling back to offline analyst", provider)
+    if not answer:
+        provider, answer = "offline", _offline(event, f"{question} {focus}")
+
+    AIQuery.objects.create(question=question, focus=focus[:200], answer=answer, provider=provider)
+    return answer, provider
 
 
-def _groq(prompt, history):
+def _groq(system, history, prompt):
     resp = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
-        json={
-            "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-            "messages": [{"role": "system", "content": SYSTEM_PROMPT},
-                         *history, {"role": "user", "content": prompt}],
-            "temperature": 0.3,
-            "max_tokens": 600,
-        },
-        timeout=30,
+        json={"model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+              "messages": [{"role": "system", "content": system}, *history, {"role": "user", "content": prompt}],
+              "temperature": 0.3, "max_tokens": 700},
+        timeout=40,
     )
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"].strip()
 
 
-def _claude(prompt, history):
+def _claude(system, history, prompt):
     import anthropic
 
     client = anthropic.Anthropic()
@@ -79,7 +84,7 @@ def _claude(prompt, history):
         output_config={"effort": "low"},
         betas=["server-side-fallback-2026-07-01"],
         fallbacks="default",
-        system=SYSTEM_PROMPT,
+        system=system,
         messages=[*history, {"role": "user", "content": prompt}],
     )
     if response.stop_reason == "refusal":
@@ -87,58 +92,64 @@ def _claude(prompt, history):
     return "".join(b.text for b in response.content if b.type == "text").strip()
 
 
-# ---------------------------------------------------------------- offline mode
+# ------------------------------------------------------------------ offline analyst
 
-def _fmt(n):
-    return f"{n:,}"
+def _n(v):
+    return f"{int(v):,}"
 
 
-def _offline(question, focus=None):
-    q = f"{question} {focus or ''}".lower()
-    nat = data.NATIONAL
+def _offline(event, text):
+    q = text.lower()
 
-    for prov, info in data.PROVINCES.items():
-        if prov.lower() in q or (prov == "Khyber Pakhtunkhwa" and re.search(r"\bkp\b|\bkpk\b", q)):
-            share = info["deaths"] / nat["deaths"] * 100
-            return (f"**{prov}** recorded {_fmt(info['deaths'])} deaths ({share:.0f}% of the national "
-                    f"toll of {_fmt(nat['deaths'])}, NDMA). {info['note']}")
+    for d in District.objects.select_related("province"):
+        if d.name.lower() in q:
+            det = analysis.district_detail(event, d.pcode)
+            weekly = [w for w in det["weeks"] if w["label"] != "1–31 Aug"]
+            peak = max(weekly, key=lambda w: w["exposed"]) if weekly else None
+            if not peak or not peak["exposed"]:
+                return (f"**{d.name}** ({d.province.name}): UNOSAT detected little or no flood water here "
+                        f"in its weekly analyses. Population {_n(d.population)} (WorldPop 2020).")
+            last = weekly[-1]
+            return (f"**{d.name}, {d.province.name}.** At its peak ({peak['label']}), UNOSAT detected "
+                    f"**{peak['flood_km2']:,.0f} km²** of flood water ({peak['flooded_share']:.0%} of the district) "
+                    f"and **{_n(peak['exposed'])} people** ({peak['exposed_share']:.0%} of the population) "
+                    f"living in flooded areas. By {last['label']}, {_n(last['exposed'])} were still exposed. "
+                    f"{d.province.name} recorded {_n(det['province_deaths'] or 0)} deaths (NDMA).\n"
+                    "Lessons: keep homes and roads off the active floodplain, clear drainage before the "
+                    "monsoon, and pre-position boats, shelter and cash aid in high-exposure union councils.")
 
-    for d in data.SEVERE + data.AFFECTED:
-        if d.lower() in q:
-            level = "among the most severely affected districts" if d in data.SEVERE else "a flood-affected district"
-            inc = next((i for i in data.INCIDENTS if d.lower() in i["name"].lower()), None)
-            extra = f" Key event ({inc['date']}): {inc['text']}" if inc else ""
-            return (f"**{d}** was {level} in 2022 (NDMA calamity notifications / OCHA).{extra} "
-                    "Lessons: keep settlements and hotels out of active floodplains, maintain drainage "
-                    "and embankments before the monsoon, and pre-position boats, shelter and cash aid.")
+    for p in Province.objects.all():
+        if p.name.lower() in q or (p.pcode == "PK5" and any(w in q.split() for w in ("kp", "kpk"))):
+            imp = event.province_impacts.filter(province=p).first()
+            exposed = sum(r["exposed"] for r in analysis.top_districts(event, n=200) if r["province"] == p.name)
+            return (f"**{p.name}**: {_n(imp.deaths if imp else 0)} deaths (NDMA), "
+                    f"{_n(exposed)} people exposed to flood water at the peak (UNOSAT). {imp.note if imp else ''}")
 
+    x = analysis.exposure_summary(event)
     rules = [
-        (r"death|died|kill|casualt|fatal", f"NDMA reported **{_fmt(nat['deaths'])} deaths** and "
-         f"**{_fmt(nat['injured'])} injured**. Sindh (799), Balochistan (336) and Khyber Pakhtunkhwa (309) "
-         "accounted for most fatalities."),
-        (r"cost|damage|loss|econom|dollar|\$|billion", f"The PDNA estimated **${nat['damage_usd_bn']}bn in damage**, "
-         f"**${nat['loss_usd_bn']}bn in economic losses** and **${nat['reconstruction_needs_usd_bn']}bn** in "
-         "reconstruction needs. Housing, agriculture and transport were the hardest-hit sectors."),
-        (r"rain|monsoon|precip|why|cause|climate", f"PMD recorded monsoon rainfall **{data.RAINFALL['national_monsoon_pct_above_normal']}% "
-         f"above normal**; in August Sindh was **{data.RAINFALL['august_sindh_pct_above_normal']}%** and Balochistan "
-         f"**{data.RAINFALL['august_balochistan_pct_above_normal']}%** above normal. World Weather Attribution found "
-         "climate change likely increased the extreme rainfall intensity."),
-        (r"house|home|shelter|displac", f"About **{_fmt(nat['houses_damaged'])} houses** were damaged "
-         f"({_fmt(nat['houses_destroyed'])} destroyed) and roughly **{nat['people_displaced_peak'] / 1e6:.1f} million** "
-         "people were displaced at the peak (NDMA/OCHA)."),
-        (r"road|bridge|infra", f"**{_fmt(nat['roads_damaged_km'])} km of roads** and **{nat['bridges_damaged']} bridges** "
-         "were damaged (NDMA)."),
-        (r"livestock|cattle|crop|agri", f"Around **{_fmt(nat['livestock_lost'])} livestock** died (NDMA); the PDNA "
-         "ranks agriculture among the largest loss sectors, with cotton, rice and date crops devastated in Sindh."),
-        (r"affect|people|population", f"About **33 million people** were affected across "
-         f"**{nat['calamity_districts']} calamity-declared districts**."),
-        (r"manchar|dadu|sehwan", data.INCIDENTS[4]["text"]),
-        (r"swat|kalam|hotel", data.INCIDENTS[0]["text"]),
+        (("exposed", "exposure", "population", "people"),
+         f"At the peak ({x['peak_label']}), UNOSAT detected **{_n(x['peak_flood_km2'])} km²** of flood water "
+         f"and **{_n(x['peak_exposed'])} people** living in flooded areas. Over all of August the figure was "
+         f"{_n(x['aug_exposed'])}. By {x['last_label']}, {_n(x['last_exposed'])} were still exposed."),
+        (("death", "died", "killed", "casualt", "fatal", "injur"),
+         f"NDMA reported **{_n(event.deaths)} deaths** and **{_n(event.injured)} injured**. Sindh, "
+         "Balochistan and Khyber Pakhtunkhwa had the most fatalities."),
+        (("cost", "damage", "loss", "econom", "billion", "$"),
+         f"The PDNA estimated **${event.damage_usd_bn}bn in damage**, **${event.loss_usd_bn}bn in losses** "
+         f"and **${event.needs_usd_bn}bn** in reconstruction needs."),
+        (("rain", "monsoon", "why", "cause", "climate"),
+         "PMD recorded monsoon rain 190% above normal; in August Sindh was 726% and Balochistan 590% above "
+         "normal. World Weather Attribution found climate change likely increased the extreme rainfall."),
+        (("house", "home", "shelter", "displac"),
+         f"**{_n(event.houses_damaged)} houses** were damaged ({_n(event.houses_destroyed)} destroyed) and about "
+         f"**{event.people_displaced / 1e6:.1f} million** people were displaced (NDMA/OCHA)."),
+        (("worst", "most", "top", "hardest", "rank"),
+         "Most exposed districts at the peak (UNOSAT): " + "; ".join(
+             f"{r['name']} {_n(r['exposed'])}" for r in analysis.top_districts(event, n=6)) + "."),
     ]
-    for pattern, answer in rules:
-        if re.search(pattern, q):
+    for words, answer in rules:
+        if any(w in q for w in words):
             return answer
-
-    return ("I'm running in **offline mode** (no AI key configured), so I can answer questions about "
-            "deaths, damage costs, rainfall, housing, infrastructure, livestock, any province or any "
-            "affected district. Add a free `GROQ_API_KEY` for full AI answers.")
+    return ("I'm in **offline mode** (no AI key configured), so I answer from the database: ask about "
+            "exposure, deaths, damage, rainfall, housing, the worst-hit districts, or any province or district. "
+            "Set a free `GROQ_API_KEY` for full AI answers.")

@@ -1,0 +1,103 @@
+{
+  "story": {
+    "style": "mapbox://styles/mapbox/dark-v11",
+    "theme": "dark",
+    "projection": "globe",
+    "show_markers": false,
+    "marker_color": "#ff5a4e",
+    "inset": true,
+    "use_3d_terrain": true,
+    "auto": false,
+    "title": "When the Indus Broke Its Banks",
+    "subtitle": "Hazard, exposure and impact of Pakistan's 2022 monsoon floods",
+    "byline": "A data story built on UNOSAT satellite analysis, NDMA and PDNA figures",
+    "footer": "Sources: UNOSAT (flood extent & population exposure, WorldPop 2020), NDMA situation reports, 2022 PDNA, PMD, OCHA COD-AB boundaries, NASA GIBS/MODIS. Exposure figures are preliminary satellite estimates, not field-validated.<br>Built with the <a href=\"https://github.com/mapbox/storytelling\" target=\"_blank\" rel=\"noopener\">Mapbox Storytelling</a> template."
+  },
+  "chapters": [
+    {
+      "slug": "overview", "alignment": "left", "title": "A disaster in slow motion",
+      "description": "From mid-June to October 2022, an extreme monsoon, fed by record spring heat and glacier melt, flooded Pakistan from the Himalayas to the Arabian Sea. <b>{{ e.people_affected|intword }}</b> people were affected and <b>{{ e.deaths|intcomma }}</b> were killed.<div class=\"stats\"><div class=\"stat\"><b>{{ e.deaths|intcomma }}</b><span>deaths</span></div><div class=\"stat\"><b>{{ x.aug_flood_km2|floatformat:0|intcomma }} km²</b><span>max flood extent, Aug</span></div><div class=\"stat\"><b>${{ total_cost }}bn</b><span>damage + losses</span></div></div>",
+      "center": [69.4, 30.0], "zoom": 4.4, "pitch": 30, "bearing": 0, "rotate_animation": true,
+      "on_chapter_enter": [{"layer": "province-outline", "opacity": 0.8, "duration": 1500}],
+      "on_chapter_exit": []
+    },
+    {
+      "slug": "hazard-rainfall", "alignment": "right", "title": "The hazard: rain off the charts",
+      "description": "Monsoon rainfall was <b>190% above</b> the 30-year normal. In August, <b>Sindh received {{ p.Sindh.rainfall_anomaly_pct }}% more</b> and <b>Balochistan {{ p.Balochistan.rainfall_anomaly_pct }}% more</b> rain than normal (PMD). Flat, poorly drained plains became inland lakes.",
+      "center": [67.4, 27.6], "zoom": 5.2, "pitch": 40, "bearing": -10,
+      "on_chapter_enter": [{"layer": "rain-anomaly", "opacity": 0.55, "duration": 1500}],
+      "on_chapter_exit": [{"layer": "rain-anomaly", "opacity": 0, "duration": 800}]
+    },
+    {
+      "slug": "swat", "alignment": "left", "title": "Flash floods in the Swat valley",
+      "description": "<span class=\"kicker\">26 August · Khyber Pakhtunkhwa</span>In the mountains, rivers rose within hours. At Kalam, the Swat River tore through hotels built on the floodplain. Khyber Pakhtunkhwa lost <b>{{ p.Khyber_Pakhtunkhwa.deaths }}</b> lives.",
+      "center": [72.5, 35.3], "zoom": 9.6, "pitch": 72, "bearing": -25, "speed": 0.7,
+      "on_chapter_enter": [{"layer": "satellite", "opacity": 1, "duration": 2000}, {"layer": "incident-dots", "opacity": 1}, {"layer": "incident-labels", "opacity": 1}],
+      "on_chapter_exit": [{"layer": "satellite", "opacity": 0, "duration": 1000}]
+    },
+    {
+      "slug": "kabul-river", "alignment": "right", "title": "The Kabul River overflows",
+      "description": "<span class=\"kicker\">28 August · Nowshera & Charsadda</span>Downstream, the Kabul and Swat rivers converged on the Peshawar valley. Nowshera and Charsadda were evacuated as water rose to levels not seen since 2010.",
+      "center": [71.85, 34.1], "zoom": 8.6, "pitch": 62, "bearing": 20,
+      "on_chapter_enter": [{"layer": "satellite", "opacity": 1, "duration": 2000}, {"layer": "flood-extent", "opacity": 0.75, "duration": 1500}],
+      "on_chapter_exit": [{"layer": "satellite", "opacity": 0, "duration": 1000}]
+    },
+    {
+      "slug": "hill-torrents", "alignment": "left", "title": "Hill torrents sweep the plains",
+      "description": "Torrents from the Suleman and Kirthar ranges hit Rajanpur and Dera Ghazi Khan and submerged Jaffarabad and Nasirabad. Balochistan recorded <b>{{ p.Balochistan.deaths }}</b> deaths and Punjab <b>{{ p.Punjab.deaths }}</b>. <i>Blue shows flood water detected by the VIIRS satellite (UNOSAT).</i>",
+      "center": [69.0, 28.8], "zoom": 6.9, "pitch": 55, "bearing": 25,
+      "on_chapter_enter": [{"layer": "flood-extent", "opacity": 0.75, "duration": 1500}, {"layer": "incident-dots", "opacity": 1}, {"layer": "incident-labels", "opacity": 1}],
+      "on_chapter_exit": []
+    },
+    {
+      "slug": "from-space", "alignment": "right", "title": "The Indus becomes an inland sea",
+      "image": "/static/floodmap/img/indus_2022.jpg",
+      "description": "NASA MODIS false-colour image of Sindh on 4 Sep 2022. Water is dark blue, vegetation green. On the map, <b>drag the slider</b> to compare with September 2021.",
+      "center": [68.1, 27.1], "zoom": 6.6, "pitch": 25, "bearing": 0, "callback": "showSwipe",
+      "on_chapter_enter": [{"layer": "gibs-2021", "opacity": 1, "duration": 1200}, {"layer": "gibs-2022", "opacity": 1, "duration": 1200}, {"layer": "flood-extent", "opacity": 0, "duration": 800}, {"layer": "incident-dots", "opacity": 0}, {"layer": "incident-labels", "opacity": 0}],
+      "on_chapter_exit": [{"layer": "gibs-2021", "opacity": 0, "duration": 800}, {"layer": "gibs-2022", "opacity": 0, "duration": 800}]
+    },
+    {
+      "slug": "manchar", "alignment": "left", "title": "Breaching Manchar Lake",
+      "description": "<span class=\"kicker\">4 September · Dadu, Sindh</span>With Pakistan's largest freshwater lake overflowing, engineers cut its embankment to save Sehwan and Bhan Saeedabad, deliberately flooding villages in Dadu and Jamshoro. UNOSAT detected <b>{{ dadu.flood_km2|floatformat:0|intcomma }} km²</b> of flood water in Dadu that week.",
+      "center": [67.72, 26.55], "zoom": 8.8, "pitch": 62, "bearing": -35, "callback": "showSwipe",
+      "on_chapter_enter": [{"layer": "gibs-2021", "opacity": 1, "duration": 1200}, {"layer": "gibs-2022", "opacity": 1, "duration": 1200}, {"layer": "incident-dots", "opacity": 1}, {"layer": "incident-labels", "opacity": 1}],
+      "on_chapter_exit": [{"layer": "gibs-2021", "opacity": 0, "duration": 800}, {"layer": "gibs-2022", "opacity": 0, "duration": 800}]
+    },
+    {
+      "slug": "exposure", "alignment": "right", "title": "{{ x.peak_exposed|intword }} people in the water's path",
+      "description": "<span class=\"kicker\">Exposure analysis · 25–31 Aug 2022</span>UNOSAT overlaid satellite-detected flood water on WorldPop population data. At the peak, <b>{{ x.peak_flood_km2|floatformat:0|intcomma }} km²</b> was under water and <b>{{ x.peak_exposed|intcomma }}</b> people lived in flooded areas. Districts are shaded by the <b>share of their population exposed</b>.<div class=\"chart\" data-chart=\"top-districts\"></div>",
+      "center": [68.4, 27.2], "zoom": 5.9, "pitch": 45, "bearing": -15, "callback": "showExposureWeek1",
+      "on_chapter_enter": [{"layer": "exposure-fill", "opacity": 0.8, "duration": 1500}, {"layer": "exposure-outline", "opacity": 0.6, "duration": 1500}, {"layer": "flood-extent", "opacity": 0.5, "duration": 1500}, {"layer": "incident-dots", "opacity": 0}, {"layer": "incident-labels", "opacity": 0}],
+      "on_chapter_exit": []
+    },
+    {
+      "slug": "recession", "alignment": "left", "title": "Water that would not leave",
+      "description": "Weekly satellite passes show how slowly the water drained. By mid-October ({{ x.last_label }}), <b>{{ x.last_flood_km2|floatformat:0|intcomma }} km²</b> was still flooded and <b>{{ x.last_exposed|intword }}</b> people remained exposed, most of them in Sindh.<div class=\"chart\" data-chart=\"flood-timeline\"></div>",
+      "center": [68.4, 26.9], "zoom": 6.2, "pitch": 50, "bearing": 10, "callback": "playRecession",
+      "on_chapter_enter": [{"layer": "exposure-fill", "opacity": 0.8}, {"layer": "exposure-outline", "opacity": 0.6}, {"layer": "flood-extent", "opacity": 0, "duration": 800}],
+      "on_chapter_exit": [{"layer": "exposure-fill", "opacity": 0, "duration": 800}, {"layer": "exposure-outline", "opacity": 0, "duration": 800}]
+    },
+    {
+      "slug": "casualties", "alignment": "right", "title": "{{ e.deaths|intcomma }} lives lost",
+      "description": "Column height shows deaths by province (NDMA). A further <b>{{ e.injured|intcomma }}</b> people were injured and about <b>{{ e.people_displaced|intword }}</b> were displaced at the peak.<div class=\"chart\" data-chart=\"province-deaths\"></div>",
+      "center": [69.6, 28.4], "zoom": 4.9, "pitch": 62, "bearing": -20, "callback": "raiseColumns",
+      "on_chapter_enter": [{"layer": "deaths-3d", "opacity": 0.9, "duration": 800}, {"layer": "deaths-labels", "opacity": 1, "duration": 1500}, {"layer": "province-outline", "opacity": 0.4}],
+      "on_chapter_exit": [{"layer": "deaths-3d", "opacity": 0, "duration": 800}, {"layer": "deaths-labels", "opacity": 0, "duration": 500}]
+    },
+    {
+      "slug": "damage", "alignment": "left", "title": "{{ e.calamity_districts }} districts declared calamity-hit",
+      "description": "About <b>{{ e.houses_damaged|intcomma }}</b> homes, <b>{{ e.roads_damaged_km|intcomma }} km</b> of road and <b>{{ e.bridges_damaged }}</b> bridges were damaged, and <b>{{ e.livestock_lost|intcomma }}</b> livestock died (NDMA). The PDNA estimated:<div class=\"stats\"><div class=\"stat\"><b>${{ e.damage_usd_bn|floatformat:1 }}bn</b><span>damage</span></div><div class=\"stat\"><b>${{ e.loss_usd_bn|floatformat:1 }}bn</b><span>economic losses</span></div><div class=\"stat\"><b>${{ e.needs_usd_bn|floatformat:1 }}bn</b><span>reconstruction needs</span></div></div>",
+      "center": [69.2, 29.8], "zoom": 4.9, "pitch": 20, "bearing": 0,
+      "on_chapter_enter": [{"layer": "flood-extent", "opacity": 0.8, "duration": 1500}, {"layer": "province-outline", "opacity": 0.8}],
+      "on_chapter_exit": []
+    },
+    {
+      "slug": "explore", "alignment": "center", "title": "Explore the data & ask the AI analyst",
+      "description": "Click <b>Explore map</b> to browse all 160 districts. Step through the weeks, click a district for its exposure profile, or ask the AI analyst for a risk brief.<div class=\"cta\"><button class=\"btn accent\" data-action=\"explore\">Explore map</button><button class=\"btn\" data-action=\"ai\">✦ Ask AI analyst</button></div>",
+      "center": [69.4, 29.6], "zoom": 4.8, "pitch": 35, "bearing": 0,
+      "on_chapter_enter": [{"layer": "exposure-fill", "opacity": 0.7, "duration": 1500}, {"layer": "exposure-outline", "opacity": 0.5}, {"layer": "flood-extent", "opacity": 0, "duration": 800}],
+      "on_chapter_exit": []
+    }
+  ]
+}

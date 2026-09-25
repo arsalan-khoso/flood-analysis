@@ -1,0 +1,104 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ config.title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ config.subtitle }}">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet">
+  <link href="{% static 'floodmap/story.css' %}" rel="stylesheet">
+</head>
+<body class="{{ config.theme }}-theme">
+  <div id="map"></div>
+  <div id="story"></div>
+
+  <!-- UI layered on top of the Mapbox Storytelling template -->
+  <nav class="toolbar" aria-label="Story controls">
+    <button id="btn-auto" class="btn">▶ Auto-play</button>
+    <button id="btn-explore" class="btn">Explore map</button>
+    <button id="btn-ai" class="btn accent">✦ Ask AI</button>
+  </nav>
+  <div id="progress"><div id="progress-bar"></div></div>
+
+  <div id="swipe" class="swipe" hidden>
+    <span>Sep 2021</span>
+    <input id="swipe-range" type="range" min="0" max="100" value="100" aria-label="Crossfade between 2021 and 2022 imagery">
+    <span>Sep 2022</span>
+    <small>NASA MODIS bands 7-2-1 · water is dark blue</small>
+  </div>
+
+  <div id="legend" class="legend" hidden></div>
+
+  <aside id="explore" class="panel explore" hidden aria-label="Explore the data">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Explore exposure</div>
+        <div class="panel-sub">UNOSAT satellite analysis · 160 districts</div>
+      </div>
+      <button id="explore-close" class="icon-btn" aria-label="Back to story">✕</button>
+    </div>
+    <label class="field">District search
+      <input id="district-search" list="district-list" placeholder="e.g. Dadu, Swat, Rajanpur">
+      <datalist id="district-list"></datalist>
+    </label>
+    <div class="field">
+      <div class="week-head"><span>Satellite period</span><b id="week-label"></b></div>
+      <input id="week-range" type="range" min="0" max="7" value="1" aria-label="Satellite period">
+      <label class="toggle"><input type="checkbox" id="toggle-extent"> Show VIIRS flood water (Jul–Aug)</label>
+    </div>
+    <div id="national-stats" class="mini-stats"></div>
+    <div id="district-card" class="district-card">
+      <p class="muted">Click a district on the map to see its exposure profile.</p>
+    </div>
+  </aside>
+
+  <section id="chat" class="panel chat" hidden aria-label="AI analyst">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">✦ AI Flood Analyst</div>
+        <div class="panel-sub" id="chat-provider"></div>
+      </div>
+      <button id="chat-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <div id="chat-log" class="chat-log" aria-live="polite"></div>
+    <div id="chat-chips" class="chips"></div>
+    <form id="chat-form" class="chat-form">
+      <input id="chat-input" autocomplete="off" maxlength="1000" placeholder="Ask about exposure, deaths, a district…">
+      <button class="btn accent" type="submit">Send</button>
+    </form>
+  </section>
+
+  <div id="no-token" class="no-token" hidden>
+    <h2>Mapbox token missing</h2>
+    <p>Create a free public token at <a href="https://account.mapbox.com/access-tokens/" target="_blank" rel="noopener">account.mapbox.com</a>, set <code>MAPBOX_TOKEN</code> in <code>.env</code> (locally) or in your Render environment, then reload.</p>
+  </div>
+
+  {{ config|json_script:"storytelling-config" }}
+  <script>
+    window.APP = {
+      slug: "{{ event.slug|escapejs }}",
+      aiProvider: "{{ ai_provider|escapejs }}",
+      api: {
+        event: "{% url 'event-detail' event.slug %}",
+        districts: "{% url 'districts-geojson' event.slug %}",
+        provinces: "{% url 'provinces-geojson' event.slug %}",
+        exposure: "{% url 'exposure-summary' event.slug %}",
+        district: "{% url 'district-detail' event.slug 'PCODE' %}",
+        ask: "{% url 'ask' %}"
+      },
+      floodExtentUrl: "{% static 'floodmap/data/flood_extent_aug2022.geojson' %}"
+    };
+    var config = JSON.parse(document.getElementById("storytelling-config").textContent);
+  </script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mapbox-gl-globe-minimap@1.2.0/dist/bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/scrollama@3.2.0/build/scrollama.min.js"></script>
+  <script src="{% static 'floodmap/flood-layers.js' %}"></script>
+  <script src="{% static 'floodmap/storytelling.js' %}"></script>
+  <script src="{% static 'floodmap/explore.js' %}"></script>
+  <script src="{% static 'floodmap/chat.js' %}"></script>
+</body>
+</html>
