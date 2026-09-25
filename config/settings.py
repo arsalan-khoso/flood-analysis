@@ -6,8 +6,10 @@ import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+# .env holds local settings. `vercel env pull` writes .env.local with the DEPLOYED
+# database URL, so it is deliberately NOT loaded here - locally we use SQLite, and on
+# Vercel the real values are injected as environment variables anyway.
 load_dotenv(BASE_DIR / ".env")
-load_dotenv(BASE_DIR / ".env.local")      # written by `vercel env pull`
 
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key" if DEBUG else None)

@@ -1,8 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "config/wsgi.py": {
-      "maxDuration": 60
+  "services": {
+    "web": {
+      "root": ".",
+      "buildCommand": "python manage.py collectstatic --no-input && python manage.py migrate --no-input && python manage.py load_flood_data --if-empty && (python manage.py createsuperuser --no-input || true)",
+      "functions": {
+        "config/wsgi.py": { "maxDuration": 60 }
+      }
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": { "type": "service", "service": "web" } }
+  ]
 }

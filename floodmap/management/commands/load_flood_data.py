@@ -22,8 +22,17 @@ def read(name):
 class Command(BaseCommand):
     help = "Load boundaries, UNOSAT exposure, NDMA/PDNA figures and story chapters into the database."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--if-empty", action="store_true",
+            help="Do nothing if an event is already loaded. Used on deploy so a redeploy "
+                 "does not overwrite edits made in the admin.")
+
     @transaction.atomic
     def handle(self, *args, **opts):
+        if opts["if_empty"] and HazardEvent.objects.exists():
+            self.stdout.write("Data already loaded; leaving it untouched (--if-empty).")
+            return
         seed = read("event.json")
         event, _ = HazardEvent.objects.update_or_create(slug=seed["event"]["slug"], defaults=seed["event"])
 
