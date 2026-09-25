@@ -7,16 +7,25 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env.local")      # written by `vercel env pull`
 
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key" if DEBUG else None)
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = []
-for host in (os.environ.get("RENDER_EXTERNAL_HOSTNAME"), *os.environ.get("EXTRA_HOSTS", "").split(",")):
+for host in (os.environ.get("RENDER_EXTERNAL_HOSTNAME"),
+             os.environ.get("VERCEL_URL"),                     # this deployment
+             os.environ.get("VERCEL_PROJECT_PRODUCTION_URL"),  # the production domain
+             *os.environ.get("EXTRA_HOSTS", "").split(",")):
     if host:
         ALLOWED_HOSTS.append(host)
         CSRF_TRUSTED_ORIGINS.append(f"https://{host}")
+
+if os.environ.get("VERCEL"):
+    # Preview deployments get a fresh generated hostname on every push.
+    ALLOWED_HOSTS.append(".vercel.app")
+    CSRF_TRUSTED_ORIGINS.append("https://*.vercel.app")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
