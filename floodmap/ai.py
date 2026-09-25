@@ -59,7 +59,10 @@ def ask(question, history=None, focus=""):
     if not answer:
         provider, answer = "offline", _offline(event, f"{question} {focus}")
 
-    AIQuery.objects.create(question=question, focus=focus[:200], answer=answer, provider=provider)
+    try:
+        AIQuery.objects.create(question=question, focus=focus[:200], answer=answer, provider=provider)
+    except Exception:   # a read-only or locked DB must not break the answer
+        log.exception("Could not log the AI query")
     return answer, provider
 
 

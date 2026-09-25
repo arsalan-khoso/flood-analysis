@@ -62,6 +62,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": dj_database_url.config(default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600),
 }
+if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    DATABASES["default"].setdefault("OPTIONS", {})["timeout"] = 20
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
@@ -81,6 +83,7 @@ STORAGES = {
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 3600          # Render serves HTTPS only; raise once you trust it
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
